@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paid Message Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #75a842; --surface: #d0d0d0; --border: #000000;
+    --gold: #b4a527f2; --silver: #9e9e9e; --bronze: #cd7f32;
+    --text: #222222; --muted: #000000;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; padding: 48px 16px 80px;
+  }
+  .ticker {
+    position: fixed; top: 0; left: 0; right: 0;
+    background: var(--gold); color: #333333;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px; letter-spacing: 2px; padding: 5px 0;
+    text-align: center; z-index: 100;
+  }
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(42px, 8vw, 80px);
+    letter-spacing: 4px; color: var(--gold);
+    text-align: center; margin-bottom: 4px; line-height: 1;
+  }
+  .subtitle {
+    color: var(--muted); font-size: 11px; letter-spacing: 3px;
+    text-transform: uppercase; margin-bottom: 40px;
+  }
+  .form-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-top: 2px solid var(--gold); padding: 28px;
+    width: 100%; max-width: 520px; margin-bottom: 40px;
+  }
+  .form-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  input {
+    background: #919191; border: 1px solid var(--border);
+    color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 13px; padding: 12px 14px; outline: none;
+    transition: border-color 0.2s; flex: 1; min-width: 120px;
+  }
+  input:focus { border-color: var(--gold); }
+  input::placeholder { color: var(--muted); }
+  #amount { max-width: 110px; flex: 0 0 110px; }
+  button {
+    background: var(--gold); color: #000; border: none;
+    font-family: 'Bebas Neue', sans-serif; font-size: 16px;
+    letter-spacing: 2px; padding: 12px 24px; cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s; white-space: nowrap;
+  }
+  button:hover { opacity: 0.85; }
+  button:active { transform: scale(0.97); }
+  .feedback { font-size: 11px; margin-top: 10px; min-height: 16px; color: var(--gold); letter-spacing: 1px; }
+  .feedback.error { color: #ee0055; }
+  .board { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 6px; }
+  .board-header {
+    display: flex; justify-content: space-between;
+    font-size: 10px; letter-spacing: 3px; color: var(--muted);
+    text-transform: uppercase; padding: 0 14px 8px;
+    border-bottom: 1px solid var(--border); margin-bottom: 4px;
+  }
+  .entry {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 14px 16px; animation: slideIn 0.3s ease;
+    position: relative; overflow: hidden;
+  }
+  .entry::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .entry.rank-1::before { background: var(--gold); }
+  .entry.rank-2::before { background: var(--silver); }
+  .entry.rank-3::before { background: var(--bronze); }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+  .rank { font-family: 'Bebas Neue', sans-serif; font-size: 22px; width: 28px; flex-shrink: 0; color: var(--muted); }
+  .entry.rank-1 .rank { color: var(--gold); }
+  .entry.rank-2 .rank { color: var(--silver); }
+  .entry.rank-3 .rank { color: var(--bronze); }
+  .msg { flex: 1; font-size: 13px; word-break: break-word; }
+  .amount-badge { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--gold); white-space: nowrap; }
+  .empty { text-align: center; color: var(--muted); font-size: 12px; letter-spacing: 2px; padding: 40px 0; }
+</style>
+</head>
+<body>
+
+<div class="ticker">⚡ LIVE LEADERBOARD — MESSAGES RANKED BY TOTAL SPEND ⚡</div>
+
+<h1>Leaderboard</h1>
+<p class="subtitle">Pay to play · Messages stack · Min $1</p>
+
+<div class="form-card">
+  <div class="form-row">
+    <input type="text" id="message" placeholder="Your message..." maxlength="120" autocomplete="off">
+    <input type="number" id="amount" placeholder="$$$" min="1" step="1">
+    <button onclick="goToCheckout()">Next →</button>
+  </div>
+  <div class="feedback" id="feedback"></div>
+</div>
+
+<div class="board" id="board">
+  <div class="empty">Loading leaderboard...</div>
+</div>
+
+<script>
+  function goToCheckout() {
+    const message = document.getElementById('message').value.trim();
+    const amount  = parseInt(document.getElementById('amount').value);
+    const feedback = document.getElementById('feedback');
+
+    feedback.className = 'feedback';
+    if (!message) {
+      feedback.className = 'feedback error';
+      feedback.textContent = '✕ Enter a message.';
+      return;
+    }
+    if (!amount || amount < 1) {
+      feedback.className = 'feedback error';
+      feedback.textContent = '✕ Minimum amount is $1.';
+      return;
+    }
+
+    const params = new URLSearchParams({ message, amount });
+    window.location.href = `/checkout.html?${params}`;
+  }
+
+  async function loadLeaderboard() {
+    try {
+      const res = await fetch('/leaderboard');
+      const entries = await res.json();
+      renderBoard(entries);
+    } catch {
+      document.getElementById('board').innerHTML = '<div class="empty">Could not load leaderboard.</div>';
+    }
+  }
+
+  function renderBoard(entries) {
+    const board = document.getElementById('board');
+    if (!entries.length) {
+      board.innerHTML = '<div class="empty">No entries yet. Be first.</div>';
+      return;
+    }
+    board.innerHTML = `<div class="board-header"><span>Rank · Message</span><span>Total</span></div>`;
+    entries.forEach((item, i) => {
+      const div = document.createElement('div');
+      div.className = `entry${i < 3 ? ` rank-${i+1}` : ''}`;
+      div.innerHTML = `
+        <span class="rank">${i+1}</span>
+        <span class="msg">${escapeHtml(item.message)}</span>
+        <span class="amount-badge">$${item.amount.toLocaleString()}</span>
+      `;
+      board.appendChild(div);
+    });
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') goToCheckout(); });
+  loadLeaderboard();
+  setInterval(loadLeaderboard, 15000);
+  
+
+</script>
+</body>
+<footer style="margin-top: 40px; font-size: 11px; color: #555; text-align: center; letter-spacing: 1px;">
+  <a href="/terms.html" style="color: #555; margin: 0 12px;">Terms of Service</a>
+  <a href="/privacy.html" style="color: #555; margin: 0 12px;">Privacy Policy</a>
+</footer>
+</html>

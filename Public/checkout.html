@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout · Paid Message Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+  :root {
+    --bg: #75a842; --surface: #d0d0d0; --border: #000000;
+    --gold: #b4a527f2; --text: #222222; --muted: #555;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 16px;
+  }
+  .back {
+    position: fixed; top: 18px; left: 20px;
+    color: var(--muted); font-size: 12px; letter-spacing: 2px;
+    text-decoration: none; text-transform: uppercase;
+    transition: color 0.15s;
+  }
+  .back:hover { color: var(--gold); }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--gold);
+    padding: 36px 32px;
+    width: 100%; max-width: 440px;
+  }
+  .step { font-size: 10px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+  h2 { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 3px; color: var(--gold); margin-bottom: 28px; }
+  .summary { border: 1px solid var(--border); padding: 14px 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .summary-msg { font-size: 13px; flex: 1; word-break: break-word; color: var(--text); }
+  .summary-amount { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--gold); white-space: nowrap; }
+  label { display: block; font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+  #card-element { background: #272727f2; border: 1px solid var(--border); padding: 13px 14px; margin-bottom: 20px; transition: border-color 0.2s; }
+  #card-element.focused { border-color: var(--gold); }
+  button { background: var(--gold); color: #000; border: none; font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 2px; padding: 14px; width: 100%; cursor: pointer; transition: opacity 0.15s, transform 0.1s; }
+  button:hover { opacity: 0.85; }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .feedback { font-size: 11px; margin-top: 14px; min-height: 16px; letter-spacing: 1px; color: var(--gold); text-align: center; }
+  .feedback.error { color: #ee0055; }
+  .feedback.success { color: #2ecc71; }
+  .secure-note { font-size: 10px; color: var(--muted); text-align: center; margin-top: 16px; letter-spacing: 1px; }
+  .success-screen { display: none; text-align: center; padding: 20px 0; }
+  .success-screen .icon { font-size: 48px; margin-bottom: 16px; }
+  .success-screen h3 { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: #2ecc71; letter-spacing: 3px; margin-bottom: 10px; }
+  .success-screen p { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+  .success-screen a { display: inline-block; background: var(--gold); color: #000; font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 2px; padding: 12px 28px; text-decoration: none; transition: opacity 0.15s; }
+  .success-screen a:hover { opacity: 0.85; }
+</style>
+</head>
+<body>
+
+<a class="back" href="/">← Back</a>
+
+<div class="card">
+  <p class="step">Step 2 of 2</p>
+  <h2>Payment</h2>
+
+  <div class="summary">
+    <span class="summary-msg" id="summaryMsg">—</span>
+    <span class="summary-amount" id="summaryAmount">$—</span>
+  </div>
+
+  <div id="paymentForm">
+    <label>Card Details</label>
+    <div id="card-element"></div>
+    <button id="payBtn" onclick="pay()">Pay Now</button>
+    <div class="feedback" id="feedback"></div>
+    <p class="secure-note">🔒 Secured by Stripe · Your card is never stored on our servers</p>
+  </div>
+
+  <div class="success-screen" id="successScreen">
+    <div class="icon">🎉</div>
+    <h3>Payment Confirmed!</h3>
+    <p>Your message is now on the leaderboard.</p>
+    <a href="/">View Leaderboard</a>
+  </div>
+</div>
+
+<script>
+  const STRIPE_PUBLISHABLE_KEY = 'pk_test_51T9SpA0ctAE6vgioZ00R9vgJZ92pNbwsP2hWTcRiYTbyWwEjesYc4AS4nM6llj7VoYYTU3gYiUrwWPgdtoRuLfZ000DDFowXfF';
+  const SERVER = 'https://back-boi-production.up.railway.app';
+
+  const params  = new URLSearchParams(window.location.search);
+  const message = params.get('message') || '';
+  const amount  = parseInt(params.get('amount')) || 0;
+
+  if (!message || !amount || amount < 1) window.location.href = '/';
+
+  document.getElementById('summaryMsg').textContent = message;
+  document.getElementById('summaryAmount').textContent = `$${amount}`;
+
+  const stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+  const elements = stripe.elements({
+    appearance: {
+      theme: 'night',
+      variables: {
+        colorPrimary: '#f5c842',
+        colorBackground: '#0a0a0a',
+        colorText: '#eeeeee',
+        colorDanger: '#ee0055',
+        fontFamily: 'DM Mono, monospace',
+        borderRadius: '0px',
+      }
+    }
+  });
+
+  const cardElement = elements.create('card');
+  cardElement.mount('#card-element');
+  cardElement.on('focus', () => document.getElementById('card-element').classList.add('focused'));
+  cardElement.on('blur',  () => document.getElementById('card-element').classList.remove('focused'));
+
+  async function pay() {
+    const feedback = document.getElementById('feedback');
+    const btn = document.getElementById('payBtn');
+
+    feedback.className = 'feedback';
+    feedback.textContent = '';
+    btn.disabled = true;
+    feedback.textContent = 'Setting up payment...';
+
+    try {
+      // Step 1: create PaymentIntent
+      const intentRes = await fetch(`${SERVER}/create-payment-intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, amount }),
+      });
+      const intentData = await intentRes.json();
+      if (!intentRes.ok) throw new Error(intentData.error || 'Server error.');
+
+      feedback.textContent = 'Processing payment...';
+
+      // Step 2: confirm with Stripe.js
+      const { error, paymentIntent } = await stripe.confirmCardPayment(
+        intentData.clientSecret,
+        { payment_method: { card: cardElement } }
+      );
+
+      if (error) throw new Error(error.message);
+
+      if (paymentIntent.status === 'succeeded') {
+        feedback.textContent = 'Updating leaderboard...';
+
+        // Step 3: tell server to verify and write to leaderboard
+        const confirmRes = await fetch(`${SERVER}/confirm-payment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentIntentId: paymentIntent.id }),
+        });
+        const confirmData = await confirmRes.json();
+        if (!confirmRes.ok) throw new Error(confirmData.error || 'Could not update leaderboard.');
+
+        document.getElementById('paymentForm').style.display = 'none';
+        document.getElementById('successScreen').style.display = 'block';
+      }
+
+    } catch (err) {
+      feedback.className = 'feedback error';
+      feedback.textContent = `✕ ${err.message}`;
+      btn.disabled = false;
+    }
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') pay(); });
+</script>
+</body>
+</html>
