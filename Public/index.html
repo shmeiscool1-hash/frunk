@@ -131,7 +131,7 @@
 
   async function loadLeaderboard() {
     try {
-      const res = await fetch('/leaderboard');
+      const res = await fetch('https://back-boi-production.up.railway.app/leaderboard');
       const entries = await res.json();
       renderBoard(entries);
     } catch {
