@@ -118,6 +118,38 @@
   .msg mark { background: var(--gold); color: #000; padding: 0 1px; }
   .amount-badge { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--gold); white-space: nowrap; }
   .empty { text-align: center; color: var(--muted); font-size: 12px; letter-spacing: 2px; padding: 40px 0; }
+
+  .share-btn {
+    background: none; border: 1px solid var(--border); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 13px; line-height: 1;
+    padding: 8px 9px; cursor: pointer; flex-shrink: 0;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .share-btn:hover { background: var(--gold); }
+  .share-btn:active { transform: scale(0.93); }
+
+  .share-menu {
+    position: absolute; right: 16px; top: 100%; margin-top: 4px;
+    background: var(--surface); border: 1px solid var(--border);
+    display: none; flex-direction: column; z-index: 50; min-width: 160px;
+  }
+  .share-menu.open { display: flex; }
+  .share-menu button {
+    background: none; border: none; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    text-align: left; padding: 10px 12px; cursor: pointer;
+  }
+  .share-menu button:hover { background: var(--gold); }
+
+  .share-toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--gold); color: #000; font-family: 'DM Mono', monospace;
+    font-size: 12px; letter-spacing: 1px; padding: 10px 18px;
+    border: 1px solid var(--border); opacity: 0; pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s; z-index: 200;
+  }
+  .share-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -148,6 +180,8 @@
 <div class="board" id="board">
   <div class="empty">Loading leaderboard...</div>
 </div>
+
+<div class="share-toast" id="shareToast"></div>
 
 <script>
   let allEntries = [];
@@ -232,6 +266,11 @@
         <span class="rank">${trueRank}</span>
         <span class="msg">${highlightMatch(item.message)}</span>
         <span class="amount-badge">$${item.amount.toLocaleString()}</span>
+        <button class="share-btn" onclick="toggleShareMenu(event, ${trueRank})" title="Share">↗</button>
+        <div class="share-menu" id="shareMenu-${trueRank}">
+          <button onclick="shareToX(${trueRank}, '${escapeForJs(item.message)}', ${item.amount})">Share on X</button>
+          <button onclick="copyShareLink(${trueRank}, '${escapeForJs(item.message)}')">Copy link</button>
+        </div>
       `;
       board.appendChild(div);
     });
@@ -272,6 +311,62 @@
       renderBoard();
     }, 150);
   });
+
+  function escapeForJs(s) {
+    return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, ' ');
+  }
+
+  function showToast(text) {
+    const toast = document.getElementById('shareToast');
+    toast.textContent = text;
+    toast.classList.add('visible');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('visible'), 2200);
+  }
+
+  function toggleShareMenu(e, rank) {
+    e.stopPropagation();
+    const menu = document.getElementById(`shareMenu-${rank}`);
+    const wasOpen = menu.classList.contains('open');
+    document.querySelectorAll('.share-menu.open').forEach(m => m.classList.remove('open'));
+    if (!wasOpen) menu.classList.add('open');
+  }
+
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.share-menu.open').forEach(m => m.classList.remove('open'));
+  });
+
+  function getEntryUrl(message) {
+    const url = new URL(window.location.origin + '/');
+    url.searchParams.set('message', message);
+    return url.toString();
+  }
+
+  function shareToX(rank, message, amount) {
+    const text = `I'm #${rank} on the Money Leaderboard with "${message}" — $${amount.toLocaleString()} spent. Think you can beat me?`;
+    const url = getEntryUrl(message);
+    const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    window.open(intent, '_blank', 'noopener,noreferrer,width=550,height=420');
+    document.querySelectorAll('.share-menu.open').forEach(m => m.classList.remove('open'));
+  }
+
+  async function copyShareLink(rank, message) {
+    const url = getEntryUrl(message);
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('✓ Link copied to clipboard');
+    } catch {
+      // Fallback for browsers/contexts without clipboard API access
+      const tmp = document.createElement('textarea');
+      tmp.value = url;
+      document.body.appendChild(tmp);
+      tmp.select();
+      try { document.execCommand('copy'); showToast('✓ Link copied to clipboard'); }
+      catch { showToast('Could not copy — copy manually: ' + url); }
+      document.body.removeChild(tmp);
+    }
+    document.querySelectorAll('.share-menu.open').forEach(m => m.classList.remove('open'));
+  }
 
   document.getElementById('message').addEventListener('keydown', e => { if (e.key === 'Enter') goToCheckout(); });
 
