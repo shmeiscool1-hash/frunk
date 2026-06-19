@@ -266,12 +266,24 @@
         <span class="rank">${trueRank}</span>
         <span class="msg">${highlightMatch(item.message)}</span>
         <span class="amount-badge">$${item.amount.toLocaleString()}</span>
-        <button class="share-btn" onclick="toggleShareMenu(event, ${trueRank})" title="Share">↗</button>
-        <div class="share-menu" id="shareMenu-${trueRank}">
-          <button onclick="shareToX(${trueRank}, '${escapeForJs(item.message)}', ${item.amount})">Share on X</button>
-          <button onclick="copyShareLink(${trueRank}, '${escapeForJs(item.message)}')">Copy link</button>
+        <button class="share-btn" title="Share">↗</button>
+        <div class="share-menu">
+          <button data-action="x">Share on X</button>
+          <button data-action="copy">Copy link</button>
         </div>
       `;
+
+      // Attach listeners directly instead of inline onclick strings —
+      // avoids breakage when messages contain quotes/backticks/etc.
+      const shareBtn = div.querySelector('.share-btn');
+      const shareMenu = div.querySelector('.share-menu');
+      const xBtn = div.querySelector('[data-action="x"]');
+      const copyBtn = div.querySelector('[data-action="copy"]');
+
+      shareBtn.addEventListener('click', (e) => toggleShareMenu(e, shareMenu));
+      xBtn.addEventListener('click', () => shareToX(trueRank, item.message, item.amount, shareMenu));
+      copyBtn.addEventListener('click', () => copyShareLink(item.message, shareMenu));
+
       board.appendChild(div);
     });
 
@@ -312,10 +324,6 @@
     }, 150);
   });
 
-  function escapeForJs(s) {
-    return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, ' ');
-  }
-
   function showToast(text) {
     const toast = document.getElementById('shareToast');
     toast.textContent = text;
@@ -324,12 +332,11 @@
     showToast._t = setTimeout(() => toast.classList.remove('visible'), 2200);
   }
 
-  function toggleShareMenu(e, rank) {
+  function toggleShareMenu(e, menuEl) {
     e.stopPropagation();
-    const menu = document.getElementById(`shareMenu-${rank}`);
-    const wasOpen = menu.classList.contains('open');
+    const wasOpen = menuEl.classList.contains('open');
     document.querySelectorAll('.share-menu.open').forEach(m => m.classList.remove('open'));
-    if (!wasOpen) menu.classList.add('open');
+    if (!wasOpen) menuEl.classList.add('open');
   }
 
   document.addEventListener('click', () => {
@@ -342,15 +349,15 @@
     return url.toString();
   }
 
-  function shareToX(rank, message, amount) {
+  function shareToX(rank, message, amount, menuEl) {
     const text = `I'm #${rank} on the Money Leaderboard with "${message}" — $${amount.toLocaleString()} spent. Think you can beat me?`;
     const url = getEntryUrl(message);
     const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
     window.open(intent, '_blank', 'noopener,noreferrer,width=550,height=420');
-    document.querySelectorAll('.share-menu.open').forEach(m => m.classList.remove('open'));
+    if (menuEl) menuEl.classList.remove('open');
   }
 
-  async function copyShareLink(rank, message) {
+  async function copyShareLink(message, menuEl) {
     const url = getEntryUrl(message);
     try {
       await navigator.clipboard.writeText(url);
@@ -365,7 +372,7 @@
       catch { showToast('Could not copy — copy manually: ' + url); }
       document.body.removeChild(tmp);
     }
-    document.querySelectorAll('.share-menu.open').forEach(m => m.classList.remove('open'));
+    if (menuEl) menuEl.classList.remove('open');
   }
 
   document.getElementById('message').addEventListener('keydown', e => { if (e.key === 'Enter') goToCheckout(); });
