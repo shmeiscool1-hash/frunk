@@ -38,7 +38,7 @@
   .form-card {
     background: var(--surface); border: 1px solid var(--border);
     border-top: 2px solid var(--gold); padding: 28px;
-    width: 100%; max-width: 520px; margin-bottom: 40px;
+    width: 100%; max-width: 520px; margin-bottom: 24px;
   }
   .form-row { display: flex; gap: 10px; flex-wrap: wrap; }
   input {
@@ -60,6 +60,37 @@
   button:active { transform: scale(0.97); }
   .feedback { font-size: 11px; margin-top: 10px; min-height: 16px; color: var(--gold); letter-spacing: 1px; }
   .feedback.error { color: #ee0055; }
+
+  .search-card {
+    width: 100%; max-width: 520px; margin-bottom: 16px;
+    position: relative;
+  }
+  .search-row { display: flex; gap: 10px; }
+  #search {
+    background: #c4c4c4; border: 1px solid var(--border);
+    color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 13px; padding: 12px 14px 12px 36px; outline: none;
+    transition: border-color 0.2s; flex: 1; width: 100%;
+  }
+  #search:focus { border-color: var(--gold); }
+  #search::placeholder { color: #555; }
+  .search-icon {
+    position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; color: #555; pointer-events: none;
+  }
+  .search-clear {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: #555; font-size: 16px;
+    cursor: pointer; padding: 4px 6px; font-family: 'DM Mono', monospace;
+    display: none;
+  }
+  .search-clear.visible { display: block; }
+  .search-meta {
+    font-size: 10px; letter-spacing: 2px; color: rgba(0,0,0,0.6);
+    text-transform: uppercase; margin-top: 6px; padding: 0 4px;
+    min-height: 14px;
+  }
+
   .board { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 6px; }
   .board-header {
     display: flex; justify-content: space-between;
@@ -84,6 +115,7 @@
   .entry.rank-2 .rank { color: var(--silver); }
   .entry.rank-3 .rank { color: var(--bronze); }
   .msg { flex: 1; font-size: 13px; word-break: break-word; }
+  .msg mark { background: var(--gold); color: #000; padding: 0 1px; }
   .amount-badge { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--gold); white-space: nowrap; }
   .empty { text-align: center; color: var(--muted); font-size: 12px; letter-spacing: 2px; padding: 40px 0; }
 </style>
@@ -104,11 +136,23 @@
   <div class="feedback" id="feedback"></div>
 </div>
 
+<div class="search-card">
+  <div class="search-row">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search" placeholder="Search messages..." autocomplete="off">
+    <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+  </div>
+  <div class="search-meta" id="searchMeta"></div>
+</div>
+
 <div class="board" id="board">
   <div class="empty">Loading leaderboard...</div>
 </div>
 
 <script>
+  let allEntries = [];
+  let currentQuery = '';
+
   function goToCheckout() {
     const message = document.getElementById('message').value.trim();
     const amount  = parseInt(document.getElementById('amount').value);
@@ -134,41 +178,64 @@
     try {
       const res = await fetch('https://back-boi-production.up.railway.app/leaderboard');
       const entries = await res.json();
-      renderBoard(entries, scrollToMessage);
+      allEntries = entries;
+      renderBoard(scrollToMessage);
     } catch {
       document.getElementById('board').innerHTML = '<div class="empty">Could not load leaderboard.</div>';
     }
   }
 
-  function renderBoard(entries, scrollToMessage) {
+  function getFilteredEntries() {
+    if (!currentQuery) return allEntries;
+    const q = currentQuery.toLowerCase();
+    return allEntries.filter(item => item.message.toLowerCase().includes(q));
+  }
+
+  function renderBoard(scrollToMessage) {
     const board = document.getElementById('board');
-    if (!entries.length) {
+    const meta = document.getElementById('searchMeta');
+    const filtered = getFilteredEntries();
+
+    if (!allEntries.length) {
       board.innerHTML = '<div class="empty">No entries yet. Be first.</div>';
+      meta.textContent = '';
       return;
     }
+
+    if (currentQuery && !filtered.length) {
+      board.innerHTML = `<div class="empty">No messages match "${escapeHtml(currentQuery)}".</div>`;
+      meta.textContent = '';
+      return;
+    }
+
+    meta.textContent = currentQuery
+      ? `${filtered.length} match${filtered.length === 1 ? '' : 'es'} for "${currentQuery}"`
+      : '';
+
     board.innerHTML = `<div class="board-header"><span>Rank · Message</span><span>Total</span></div>`;
 
     let targetEl = null;
 
-    entries.forEach((item, i) => {
-      const div = document.createElement('div');
-      div.className = `entry${i < 3 ? ` rank-${i+1}` : ''}`;
+    filtered.forEach((item) => {
+      // Use the item's position in the full (unfiltered) list to preserve true rank
+      const trueRank = allEntries.indexOf(item) + 1;
 
-      // Highlight and scroll to the user's message if it matches
+      const div = document.createElement('div');
+      div.className = `entry${trueRank <= 3 ? ` rank-${trueRank}` : ''}`;
+
       if (scrollToMessage && item.message.toLowerCase() === scrollToMessage.toLowerCase()) {
         div.classList.add('highlight');
         targetEl = div;
       }
 
       div.innerHTML = `
-        <span class="rank">${i+1}</span>
-        <span class="msg">${escapeHtml(item.message)}</span>
+        <span class="rank">${trueRank}</span>
+        <span class="msg">${highlightMatch(item.message)}</span>
         <span class="amount-badge">$${item.amount.toLocaleString()}</span>
       `;
       board.appendChild(div);
     });
 
-    // Scroll to the highlighted entry
     if (targetEl) {
       setTimeout(() => {
         targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -176,11 +243,37 @@
     }
   }
 
+  function highlightMatch(message) {
+    const escaped = escapeHtml(message);
+    if (!currentQuery) return escaped;
+    const escapedQuery = escapeHtml(currentQuery);
+    const safeQuery = escapedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return escaped.replace(new RegExp(`(${safeQuery})`, 'ig'), '<mark>$1</mark>');
+  }
+
   function escapeHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  document.addEventListener('keydown', e => { if (e.key === 'Enter') goToCheckout(); });
+  function clearSearch() {
+    currentQuery = '';
+    document.getElementById('search').value = '';
+    document.getElementById('searchClear').classList.remove('visible');
+    renderBoard();
+  }
+
+  let searchDebounce;
+  document.getElementById('search').addEventListener('input', (e) => {
+    clearTimeout(searchDebounce);
+    const val = e.target.value;
+    document.getElementById('searchClear').classList.toggle('visible', val.length > 0);
+    searchDebounce = setTimeout(() => {
+      currentQuery = val.trim();
+      renderBoard();
+    }, 150);
+  });
+
+  document.getElementById('message').addEventListener('keydown', e => { if (e.key === 'Enter') goToCheckout(); });
 
   // Check if we were redirected here after a successful payment
   const params = new URLSearchParams(window.location.search);
