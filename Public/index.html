@@ -77,6 +77,7 @@
   .entry.rank-1::before { background: var(--gold); }
   .entry.rank-2::before { background: var(--silver); }
   .entry.rank-3::before { background: var(--bronze); }
+  .entry.highlight { outline: 2px solid var(--gold); background: #c8c8c8; }
   @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
   .rank { font-family: 'Bebas Neue', sans-serif; font-size: 22px; width: 28px; flex-shrink: 0; color: var(--muted); }
   .entry.rank-1 .rank { color: var(--gold); }
@@ -129,26 +130,36 @@
     window.location.href = `/checkout.html?${params}`;
   }
 
-  async function loadLeaderboard() {
+  async function loadLeaderboard(scrollToMessage) {
     try {
       const res = await fetch('https://back-boi-production.up.railway.app/leaderboard');
       const entries = await res.json();
-      renderBoard(entries);
+      renderBoard(entries, scrollToMessage);
     } catch {
       document.getElementById('board').innerHTML = '<div class="empty">Could not load leaderboard.</div>';
     }
   }
 
-  function renderBoard(entries) {
+  function renderBoard(entries, scrollToMessage) {
     const board = document.getElementById('board');
     if (!entries.length) {
       board.innerHTML = '<div class="empty">No entries yet. Be first.</div>';
       return;
     }
     board.innerHTML = `<div class="board-header"><span>Rank · Message</span><span>Total</span></div>`;
+
+    let targetEl = null;
+
     entries.forEach((item, i) => {
       const div = document.createElement('div');
       div.className = `entry${i < 3 ? ` rank-${i+1}` : ''}`;
+
+      // Highlight and scroll to the user's message if it matches
+      if (scrollToMessage && item.message.toLowerCase() === scrollToMessage.toLowerCase()) {
+        div.classList.add('highlight');
+        targetEl = div;
+      }
+
       div.innerHTML = `
         <span class="rank">${i+1}</span>
         <span class="msg">${escapeHtml(item.message)}</span>
@@ -156,6 +167,13 @@
       `;
       board.appendChild(div);
     });
+
+    // Scroll to the highlighted entry
+    if (targetEl) {
+      setTimeout(() => {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
   }
 
   function escapeHtml(s) {
@@ -163,10 +181,19 @@
   }
 
   document.addEventListener('keydown', e => { if (e.key === 'Enter') goToCheckout(); });
-  loadLeaderboard();
-  setInterval(loadLeaderboard, 15000);
-  
 
+  // Check if we were redirected here after a successful payment
+  const params = new URLSearchParams(window.location.search);
+  const justPaid = params.get('message');
+
+  // Load leaderboard, scrolling to the message if just paid
+  loadLeaderboard(justPaid);
+  setInterval(() => loadLeaderboard(), 15000);
+
+  // Clean up the URL without reloading
+  if (justPaid) {
+    window.history.replaceState({}, '', '/');
+  }
 </script>
 </body>
 <footer style="margin-top: 40px; font-size: 11px; color: #555; text-align: center; letter-spacing: 1px;">
