@@ -25,6 +25,28 @@
     font-size: 13px; letter-spacing: 2px; padding: 5px 0;
     text-align: center; z-index: 100;
   }
+
+  /* Top right nav — sits inside the ticker bar */
+  .topnav {
+    position: fixed; top: 0; right: 12px; height: 27px;
+    display: flex; align-items: center; gap: 12px;
+    z-index: 101;
+  }
+  .topnav a {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    color: #333; text-decoration: none; transition: color 0.15s;
+    line-height: 1;
+  }
+  .topnav a:hover { color: #000; }
+  .topnav .divider { color: #555; font-size: 10px; line-height: 1; }
+  .topnav .social {
+    font-size: 13px; color: #333; text-decoration: none;
+    transition: transform 0.15s, color 0.15s;
+    display: flex; align-items: center;
+  }
+  .topnav .social:hover { color: #000; transform: scale(1.2); }
+
   h1 {
     font-family: 'Bebas Neue', sans-serif;
     font-size: clamp(42px, 8vw, 80px);
@@ -60,7 +82,6 @@
   button:active { transform: scale(0.97); }
   .feedback { font-size: 11px; margin-top: 10px; min-height: 16px; color: var(--gold); letter-spacing: 1px; }
   .feedback.error { color: #ee0055; }
-
   .search-card {
     width: 100%; max-width: 520px; margin-bottom: 16px;
     position: relative;
@@ -90,7 +111,6 @@
     text-transform: uppercase; margin-top: 6px; padding: 0 4px;
     min-height: 14px;
   }
-
   .board { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 6px; }
   .board-header {
     display: flex; justify-content: space-between;
@@ -118,7 +138,6 @@
   .msg mark { background: var(--gold); color: #000; padding: 0 1px; }
   .amount-badge { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--gold); white-space: nowrap; }
   .empty { text-align: center; color: var(--muted); font-size: 12px; letter-spacing: 2px; padding: 40px 0; }
-
   .share-btn {
     background: none; border: 1px solid var(--border); color: var(--text);
     font-family: 'DM Mono', monospace; font-size: 13px; line-height: 1;
@@ -127,7 +146,6 @@
   }
   .share-btn:hover { background: var(--gold); }
   .share-btn:active { transform: scale(0.93); }
-
   .share-menu {
     position: absolute; right: 16px; top: 100%; margin-top: 4px;
     background: var(--surface); border: 1px solid var(--border);
@@ -140,7 +158,6 @@
     text-align: left; padding: 10px 12px; cursor: pointer;
   }
   .share-menu button:hover { background: var(--gold); }
-
   .share-toast {
     position: fixed; bottom: 24px; left: 50%;
     transform: translateX(-50%) translateY(20px);
@@ -155,6 +172,17 @@
 <body>
 
 <div class="ticker">⚡ LIVE LEADERBOARD — MESSAGES RANKED BY TOTAL SPEND ⚡</div>
+
+<!-- Top right nav inside ticker bar -->
+<nav class="topnav">
+  <a href="https://twitter.com/Moneyleaderbord" class="social" target="_blank" rel="noopener" title="X / Twitter">𝕏</a>
+  <a href="https://discord.gg/yourinvite" class="social" target="_blank" rel="noopener" title="Discord">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+  </a>
+  <span class="divider">·</span>
+  <a href="/terms.html">Terms</a>
+  <a href="/privacy.html">Privacy</a>
+</nav>
 
 <h1>Leaderboard</h1>
 <p class="subtitle">Pay to play · Messages stack · Min $1</p>
@@ -191,7 +219,6 @@
     const message = document.getElementById('message').value.trim();
     const amount  = parseInt(document.getElementById('amount').value);
     const feedback = document.getElementById('feedback');
-
     feedback.className = 'feedback';
     if (!message) {
       feedback.className = 'feedback error';
@@ -203,7 +230,6 @@
       feedback.textContent = '✕ Minimum amount is $1.';
       return;
     }
-
     const params = new URLSearchParams({ message, amount });
     window.location.href = `/checkout.html?${params}`;
   }
@@ -229,39 +255,29 @@
     const board = document.getElementById('board');
     const meta = document.getElementById('searchMeta');
     const filtered = getFilteredEntries();
-
     if (!allEntries.length) {
       board.innerHTML = '<div class="empty">No entries yet. Be first.</div>';
       meta.textContent = '';
       return;
     }
-
     if (currentQuery && !filtered.length) {
       board.innerHTML = `<div class="empty">No messages match "${escapeHtml(currentQuery)}".</div>`;
       meta.textContent = '';
       return;
     }
-
     meta.textContent = currentQuery
       ? `${filtered.length} match${filtered.length === 1 ? '' : 'es'} for "${currentQuery}"`
       : '';
-
     board.innerHTML = `<div class="board-header"><span>Rank · Message</span><span>Total</span></div>`;
-
     let targetEl = null;
-
     filtered.forEach((item) => {
-      // Use the item's position in the full (unfiltered) list to preserve true rank
       const trueRank = allEntries.indexOf(item) + 1;
-
       const div = document.createElement('div');
       div.className = `entry${trueRank <= 3 ? ` rank-${trueRank}` : ''}`;
-
       if (scrollToMessage && item.message.toLowerCase() === scrollToMessage.toLowerCase()) {
         div.classList.add('highlight');
         targetEl = div;
       }
-
       div.innerHTML = `
         <span class="rank">${trueRank}</span>
         <span class="msg">${highlightMatch(item.message)}</span>
@@ -272,25 +288,15 @@
           <button data-action="copy">Copy link</button>
         </div>
       `;
-
-      // Attach listeners directly instead of inline onclick strings —
-      // avoids breakage when messages contain quotes/backticks/etc.
       const shareBtn = div.querySelector('.share-btn');
       const shareMenu = div.querySelector('.share-menu');
-      const xBtn = div.querySelector('[data-action="x"]');
-      const copyBtn = div.querySelector('[data-action="copy"]');
-
       shareBtn.addEventListener('click', (e) => toggleShareMenu(e, shareMenu));
-      xBtn.addEventListener('click', () => shareToX(trueRank, item.message, item.amount, shareMenu));
-      copyBtn.addEventListener('click', () => copyShareLink(item.message, shareMenu));
-
+      div.querySelector('[data-action="x"]').addEventListener('click', () => shareToX(trueRank, item.message, item.amount, shareMenu));
+      div.querySelector('[data-action="copy"]').addEventListener('click', () => copyShareLink(item.message, shareMenu));
       board.appendChild(div);
     });
-
     if (targetEl) {
-      setTimeout(() => {
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
+      setTimeout(() => targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
     }
   }
 
@@ -363,7 +369,6 @@
       await navigator.clipboard.writeText(url);
       showToast('✓ Link copied to clipboard');
     } catch {
-      // Fallback for browsers/contexts without clipboard API access
       const tmp = document.createElement('textarea');
       tmp.value = url;
       document.body.appendChild(tmp);
@@ -377,22 +382,11 @@
 
   document.getElementById('message').addEventListener('keydown', e => { if (e.key === 'Enter') goToCheckout(); });
 
-  // Check if we were redirected here after a successful payment
   const params = new URLSearchParams(window.location.search);
   const justPaid = params.get('message');
-
-  // Load leaderboard, scrolling to the message if just paid
   loadLeaderboard(justPaid);
   setInterval(() => loadLeaderboard(), 15000);
-
-  // Clean up the URL without reloading
-  if (justPaid) {
-    window.history.replaceState({}, '', '/');
-  }
+  if (justPaid) window.history.replaceState({}, '', '/');
 </script>
 </body>
-<footer style="margin-top: 40px; font-size: 11px; color: #555; text-align: center; letter-spacing: 1px;">
-  <a href="/terms.html" style="color: #555; margin: 0 12px;">Terms of Service</a>
-  <a href="/privacy.html" style="color: #555; margin: 0 12px;">Privacy Policy</a>
-</footer>
 </html>
