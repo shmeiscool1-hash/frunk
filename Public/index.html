@@ -1,21 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- Event snippet for Purchase conversion page -->
-<script>
-  gtag('event', 'conversion', {
-      'send_to': 'AW-18269161569/q736CLzD-MQcEOGQtYdE',
-      'value': 1.0,
-      'currency': 'USD',
-      'transaction_id': ''
-      // 'new_customer': true /* calculate dynamically, populate with true/false */,
-  });
-</script>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Paid Message Leaderboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Google tag (gtag.js) — must load first -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18269161569"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'AW-18269161569');
+</script>
+
+<!-- Purchase conversion event — fires only when redirected from successful payment -->
+<script>
+  (function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('message')) {
+      gtag('event', 'conversion', {
+        'send_to': 'AW-18269161569/q736CLzD-MQcEOGQtYdE',
+        'value': 1.0,
+        'currency': 'USD',
+        'transaction_id': ''
+      });
+    }
+  })();
+</script>
+
 <style>
   :root {
     --bg: #75a842; --surface: #d0d0d0; --border: #000000;
@@ -401,12 +415,3 @@
 </script>
 </body>
 </html>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18269161569"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'AW-18269161569');
-</script>
